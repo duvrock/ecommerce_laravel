@@ -20,6 +20,14 @@ export default function AdminDashboard() {
                     <p className="mt-4 text-gray-600">
                         Accesul este protejat de autentificare, verificarea emailului și permisiunea serverului.
                     </p>
+                    <nav className="mt-6 flex flex-wrap gap-3">
+                        <Link href="/admin/categories" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white">
+                            Categorii
+                        </Link>
+                        <Link href="/admin/products" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white">
+                            Produse
+                        </Link>
+                    </nav>
                 </section>
             </main>
         </>

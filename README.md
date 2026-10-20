@@ -58,7 +58,7 @@ Panoul `/admin` este protejat de autentificare, email verificat și permisiunea 
 
 Schema catalogului este pregătită prin `php artisan migrate`: categoriile au nume, slug unic, descriere opțională și stare activă; produsele sunt asociate unei categorii și au nume, slug unic, descriere opțională, preț cu două zecimale, stoc, cale opțională pentru imagine și stare activă. O categorie cu produse nu poate fi ștearsă până când produsele nu sunt mutate sau șterse.
 
-Validarea datelor de creare este definită în `StoreCategoryRequest` și `StoreProductRequest`. CRUD-ul administrativ și paginile publice ale catalogului urmează în etapele următoare.
+Administrarea categoriilor și produselor este disponibilă din `/admin`, cu permisiunile `manage-categories` și `manage-products`. Categoriile care au produse asociate nu pot fi șterse. Pagina publică a catalogului urmează într-o etapă separată.
 
 ## About Laravel
 

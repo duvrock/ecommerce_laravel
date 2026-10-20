@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -62,7 +64,21 @@ Route::middleware('auth')->group(function () {
         ->middleware('verified')
         ->name('account');
 
-    Route::get('/admin', DashboardController::class)
-        ->middleware(['verified', 'can:access-admin'])
-        ->name('admin.dashboard');
+    Route::middleware(['verified', 'can:access-admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/', DashboardController::class)->name('dashboard');
+
+        Route::middleware('can:manage-categories')->group(function () {
+            Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+            Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
+            Route::put('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
+            Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+        });
+
+        Route::middleware('can:manage-products')->group(function () {
+            Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+            Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+            Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
+            Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+        });
+    });
 });

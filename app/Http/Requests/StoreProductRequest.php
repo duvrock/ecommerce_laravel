@@ -17,7 +17,13 @@ class StoreProductRequest extends FormRequest
         return [
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'alpha_dash', 'max:255', Rule::unique('products', 'slug')],
+            'slug' => [
+                'required',
+                'string',
+                'alpha_dash',
+                'max:255',
+                Rule::unique('products', 'slug')->ignore($this->route('product')),
+            ],
             'description' => ['nullable', 'string', 'max:10000'],
             'price' => ['required', 'numeric', 'decimal:0,2', 'gt:0', 'max:99999999.99'],
             'stock' => ['required', 'integer', 'min:0', 'max:4294967295'],
