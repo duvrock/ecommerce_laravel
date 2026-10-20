@@ -54,6 +54,12 @@ $user->roles()->syncWithoutDetaching([$roleId]);
 
 Panoul `/admin` este protejat de autentificare, email verificat și permisiunea `access-admin` verificată pe server.
 
+### Catalog produse
+
+Schema catalogului este pregătită prin `php artisan migrate`: categoriile au nume, slug unic, descriere opțională și stare activă; produsele sunt asociate unei categorii și au nume, slug unic, descriere opțională, preț cu două zecimale, stoc, cale opțională pentru imagine și stare activă. O categorie cu produse nu poate fi ștearsă până când produsele nu sunt mutate sau șterse.
+
+Validarea datelor de creare este definită în `StoreCategoryRequest` și `StoreProductRequest`. CRUD-ul administrativ și paginile publice ale catalogului urmează în etapele următoare.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
