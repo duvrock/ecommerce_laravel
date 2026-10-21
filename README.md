@@ -58,7 +58,7 @@ Panoul `/admin` este protejat de autentificare, email verificat și permisiunea 
 
 Schema catalogului este pregătită prin `php artisan migrate`: categoriile au nume, slug unic, descriere opțională și stare activă; produsele sunt asociate unei categorii și au nume, slug unic, descriere opțională, preț cu două zecimale, stoc, cale opțională pentru imagine și stare activă. O categorie cu produse nu poate fi ștearsă până când produsele nu sunt mutate sau șterse.
 
-Administrarea categoriilor și produselor este disponibilă din `/admin`, cu permisiunile `manage-categories` și `manage-products`. Categoriile care au produse asociate nu pot fi șterse. Pagina publică a catalogului urmează într-o etapă separată.
+Administrarea categoriilor și produselor este disponibilă din `/admin`, cu permisiunile `manage-categories` și `manage-products`. Interfața de administrare folosește Bootstrap, cu navigare adaptată pentru mobil și un dashboard cu statistici reale din catalog. Panoul permite căutare și filtrare după stare, iar produsele pot fi filtrate și după categorie. Fiecare produs poate avea o imagine principală și până la 10 imagini suplimentare în galerie; imaginile încărcate sunt salvate pe discul public în `storage/app/public/products`. Rulează `php artisan storage:link` pentru a le servi prin `/storage`. Magazinul public de la `/` afișează produsele și galeriile cu căutare, categorii, filtre de preț și stoc și sortare. Categoriile care au produse asociate nu pot fi șterse.
 
 ## About Laravel
 

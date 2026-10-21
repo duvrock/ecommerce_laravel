@@ -1,129 +1,321 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import StorefrontFooter from '../Components/StorefrontFooter';
 import StorefrontHeader from '../Components/StorefrontHeader';
 
-type WelcomeProps = {
-    appName: string;
-    auth: {
-        user: {
-            name: string;
-        } | null;
-    };
+type Category = {
+    id: number;
+    name: string;
+    slug: string;
+    products_count: number;
 };
 
-export default function Welcome({ appName, auth }: WelcomeProps) {
+type Product = {
+    id: number;
+    name: string;
+    slug: string;
+    description: string | null;
+    price: string;
+    stock: number;
+    image_path: string | null;
+    category: Category;
+};
+
+type Pagination<T> = {
+    data: T[];
+    links: { url: string | null; label: string; active: boolean }[];
+    total: number;
+    from: number | null;
+    to: number | null;
+};
+
+type Filters = {
+    search: string;
+    category: number | null;
+    min_price: string;
+    max_price: string;
+    availability: string;
+    sort: string;
+};
+
+type WelcomeProps = {
+    appName: string;
+    auth: { user: { name: string } | null };
+    categories: Category[];
+    products: Pagination<Product>;
+    filters: Filters;
+};
+
+function imageUrl(path: string): string {
+    return /^https?:\/\//i.test(path) || path.startsWith('/') ? path : `/storage/${path}`;
+}
+
+function ProductCard({ product }: { product: Product }) {
+    return (
+        <article className="shop-product-card">
+            <div className="shop-product-media">
+                {product.image_path ? (
+                    <img src={imageUrl(product.image_path)} alt={product.name} loading="lazy" />
+                ) : (
+                    <div className="shop-image-placeholder" aria-label="Produs fără imagine">
+                        <span>{product.name.slice(0, 1).toUpperCase()}</span>
+                        <small>Imagine în curând</small>
+                    </div>
+                )}
+            </div>
+
+            <div className="shop-product-info">
+                <Link href={`/?category=${product.category.id}#produse`} className="shop-product-category">
+                    {product.category.name}
+                </Link>
+                <h3><Link href={`/produse/${product.slug}`}>{product.name}</Link></h3>
+                {product.description && (
+                    <p className="shop-product-description">
+                        {product.description}
+                    </p>
+                )}
+                <div className="shop-product-price">
+                    {Number(product.price).toLocaleString('ro-RO', { style: 'currency', currency: 'RON' })}
+                </div>
+                <div className={`shop-stock${product.stock > 0 ? '' : ' is-out'}`}>
+                    <span aria-hidden="true" />
+                    {product.stock > 0 ? 'Disponibil în stoc' : 'Stoc epuizat'}
+                </div>
+                <div className="shop-product-actions">
+                    <Link href={`/produse/${product.slug}`} className="shop-product-button">Afișare produs</Link>
+                    <button
+                        type="button"
+                        className="shop-product-button shop-cart-button"
+                        aria-label={`Adaugă ${product.name} în coș (disponibil în curând)`}
+                        title="Coșul de cumpărături va fi disponibil în curând"
+                        disabled
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 4h2l2.2 10.1a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 1.9-1.4L21 8H6" />
+                            <circle cx="10" cy="20" r="1" />
+                            <circle cx="18" cy="20" r="1" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </article>
+    );
+}
+
+export default function Welcome({ appName, auth, categories, products, filters }: WelcomeProps) {
+    const [formFilters, setFormFilters] = useState(filters);
+
+    useEffect(() => {
+        setFormFilters(filters);
+    }, [filters]);
+
+    function updateFilter<Key extends keyof Filters>(key: Key, value: Filters[Key]) {
+        setFormFilters((current) => ({ ...current, [key]: value }));
+    }
+
+    function submitFilters(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        router.get('/', formFilters, { preserveState: true, replace: true, preserveScroll: true });
+    }
+
+    function clearFilters() {
+        const cleared: Filters = {
+            search: '',
+            category: null,
+            min_price: '',
+            max_price: '',
+            availability: 'all',
+            sort: 'relevant',
+        };
+        setFormFilters(cleared);
+        router.get('/', cleared, { preserveState: true, replace: true, preserveScroll: true });
+    }
+
+    const selectedCategory = categories.find((category) => category.id === filters.category);
+
     return (
         <>
-            <Head title="Acasă" />
-            <div className="min-h-screen bg-[#fffdf8] text-stone-950">
-                <StorefrontHeader appName={appName} user={auth.user} />
+            <Head title={selectedCategory?.name ?? 'Produse'} />
+            <div className="shop-page">
+                <StorefrontHeader
+                    appName={appName}
+                    user={auth.user}
+                    search={filters.search}
+                    categories={categories}
+                    selectedCategory={filters.category}
+                />
 
-                <main>
-                    <section className="overflow-hidden bg-[#f1eee5]">
-                        <div className="mx-auto grid min-h-[580px] max-w-7xl items-center gap-10 px-5 py-16 sm:px-8 md:grid-cols-2 md:py-20">
-                            <div className="relative z-[1] max-w-xl">
-                                <p className="inline-flex items-center gap-2 rounded-full border border-emerald-900/15 bg-white/60 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-950">
-                                    <span className="size-2 rounded-full bg-emerald-700" />
-                                    Bine ai venit
-                                </p>
-                                <h1 className="mt-7 text-5xl font-semibold leading-[1.08] tracking-tight sm:text-6xl">
-                                    Descoperă lucrurile care ți se potrivesc.
-                                </h1>
-                                <p className="mt-6 max-w-lg text-lg leading-8 text-stone-600">
-                                    Pregătim un magazin online simplu de explorat, cu produse și colecții pentru tine.
-                                </p>
-                                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                                    <a
-                                        href="#magazin"
-                                        className="inline-flex min-h-12 items-center justify-center rounded-full bg-emerald-950 px-7 text-sm font-semibold text-white transition hover:bg-emerald-800"
-                                    >
-                                        Descoperă magazinul
-                                        <span aria-hidden="true" className="ml-3 text-lg">→</span>
-                                    </a>
-                                    {!auth.user && (
-                                        <Link
-                                            href="/register"
-                                            className="inline-flex min-h-12 items-center justify-center rounded-full border border-stone-400 bg-white/40 px-7 text-sm font-semibold text-stone-800 transition hover:bg-white"
-                                        >
-                                            Creează un cont
-                                        </Link>
-                                    )}
-                                </div>
-                            </div>
+                <main id="produse" className="shop-container shop-main">
+                    <div className="shop-breadcrumb">
+                        <Link href="/">Acasă</Link>
+                        <span aria-hidden="true">/</span>
+                        <span>{selectedCategory?.name ?? 'Catalog produse'}</span>
+                    </div>
 
-                            <div aria-hidden="true" className="relative mx-auto flex aspect-square w-full max-w-[480px] items-center justify-center">
-                                <div className="absolute inset-[8%] rounded-full bg-[#e2d8c4]" />
-                                <div className="absolute right-[7%] top-[14%] size-20 rounded-full bg-[#c5d4c1]" />
-                                <div className="absolute bottom-[12%] left-[8%] size-14 rounded-full bg-[#d3a16d]" />
-                                <div className="relative flex aspect-[0.82] w-[62%] rotate-[-5deg] flex-col justify-between rounded-[2rem] border border-white/70 bg-gradient-to-br from-[#fdfbf4] via-[#e6e2d6] to-[#b8c5b3] p-7 shadow-[0_35px_80px_rgba(42,50,35,0.18)] sm:p-9">
-                                    <div className="flex items-center justify-between">
-                                        <span className="size-3 rounded-full bg-emerald-950" />
-                                        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
-                                            {appName}
-                                        </span>
-                                    </div>
-                                    <svg viewBox="0 0 220 220" className="mx-auto w-[90%] text-emerald-950" fill="none">
-                                        <path d="M43 87h134l-12 104H55L43 87Z" fill="currentColor" opacity=".92" />
-                                        <path d="M75 91V70a35 35 0 0 1 70 0v21" stroke="#f1eee5" strokeWidth="9" strokeLinecap="round" />
-                                        <path d="M66 117h88M73 136h74" stroke="#f1eee5" strokeWidth="4" strokeLinecap="round" opacity=".65" />
-                                        <path d="m96 158 10 10 21-25" stroke="#f1eee5" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                    <div>
-                                        <p className="text-xs uppercase tracking-[0.18em] text-stone-600">Alegeri inspirate</p>
-                                        <p className="mt-1 text-xl font-semibold tracking-tight text-emerald-950">Pentru zi de zi</p>
-                                    </div>
-                                </div>
-                            </div>
+                    <section className="shop-intro">
+                        <div>
+                            <p className="shop-eyebrow">Selecția magazinului</p>
+                            <h1>{selectedCategory?.name ?? 'Produse pentru proiectele tale'}</h1>
+                            <p className="shop-intro-copy">
+                                Explorează catalogul, compară produsele și găsește echipamentul potrivit pentru următoarea ta lucrare.
+                            </p>
+                        </div>
+                        <div className="shop-results-summary">
+                            <strong>{products.total}</strong>
+                            <span>{products.total === 1 ? 'produs disponibil' : 'produse disponibile'}</span>
                         </div>
                     </section>
 
-                    <section id="magazin" className="mx-auto max-w-7xl px-5 py-20 sm:px-8 md:py-24">
-                        <div className="grid gap-8 md:grid-cols-[0.8fr_1.2fr] md:items-end">
-                            <div>
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">
-                                    În pregătire
-                                </p>
-                                <h2 className="mt-4 max-w-md text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
-                                    Un magazin nou, construit cu grijă.
-                                </h2>
-                            </div>
-                            <div className="flex flex-col justify-between gap-6 border-t border-stone-200 pt-6 sm:flex-row sm:items-end md:border-l md:border-t-0 md:pl-8 md:pt-0">
-                                <p className="max-w-lg leading-7 text-stone-600">
-                                    Lucrăm la catalogul de produse. Până atunci, îți poți crea un cont pentru a avea acces rapid la zona ta de client.
-                                </p>
+                    {categories.length > 0 && (
+                        <nav className="shop-category-chips" aria-label="Categorii disponibile">
+                            <Link href="/#produse" className={!filters.category ? 'is-active' : ''}>Toate produsele</Link>
+                            {categories.map((category) => (
                                 <Link
-                                    href={auth.user ? '/account' : '/register'}
-                                    className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-emerald-900 hover:text-emerald-700"
+                                    key={category.id}
+                                    href={`/?category=${category.id}#produse`}
+                                    className={filters.category === category.id ? 'is-active' : ''}
                                 >
-                                    {auth.user ? 'Mergi la cont' : 'Creează cont client'}
-                                    <span aria-hidden="true">→</span>
+                                    {category.name} <span>{category.products_count}</span>
                                 </Link>
-                            </div>
-                        </div>
-                    </section>
+                            ))}
+                        </nav>
+                    )}
 
-                    <section id="despre" className="border-y border-stone-200 bg-[#f7f5ef]">
-                        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-8 md:grid-cols-3 md:gap-12 md:py-14">
-                            <div>
-                                <p className="text-sm font-semibold text-emerald-950">Simplu de folosit</p>
-                                <p className="mt-2 text-sm leading-6 text-stone-600">
-                                    O experiență clară, de la prima vizită până la contul tău de client.
+                    <div className="shop-catalog-layout">
+                        <aside className="shop-filter-panel">
+                            <form onSubmit={submitFilters}>
+                                <div className="shop-filter-heading">
+                                    <h2>Filtrează produsele</h2>
+                                    <button type="button" onClick={clearFilters}>Resetează</button>
+                                </div>
+
+                                <fieldset className="shop-filter-group">
+                                    <legend>Categorie</legend>
+                                    <label className="shop-check-option">
+                                        <input
+                                            type="radio"
+                                            name="category"
+                                            checked={!formFilters.category}
+                                            onChange={() => updateFilter('category', null)}
+                                        />
+                                        <span>Toate categoriile</span>
+                                    </label>
+                                    {categories.map((category) => (
+                                        <label key={category.id} className="shop-check-option">
+                                            <input
+                                                type="radio"
+                                                name="category"
+                                                checked={formFilters.category === category.id}
+                                                onChange={() => updateFilter('category', category.id)}
+                                            />
+                                            <span>{category.name}</span>
+                                            <small>{category.products_count}</small>
+                                        </label>
+                                    ))}
+                                </fieldset>
+
+                                <fieldset className="shop-filter-group">
+                                    <legend>Disponibilitate</legend>
+                                    <label className="shop-check-option">
+                                        <input
+                                            type="checkbox"
+                                            checked={formFilters.availability === 'in_stock'}
+                                            onChange={(event) => updateFilter('availability', event.target.checked ? 'in_stock' : 'all')}
+                                        />
+                                        <span>Doar produse în stoc</span>
+                                    </label>
+                                </fieldset>
+
+                                <fieldset className="shop-filter-group">
+                                    <legend>Preț (RON)</legend>
+                                    <div className="shop-price-inputs">
+                                        <label>
+                                            <span className="sr-only">Preț minim</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                                placeholder="Min."
+                                                value={formFilters.min_price}
+                                                onChange={(event) => updateFilter('min_price', event.target.value)}
+                                            />
+                                        </label>
+                                        <span aria-hidden="true">—</span>
+                                        <label>
+                                            <span className="sr-only">Preț maxim</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                                placeholder="Max."
+                                                value={formFilters.max_price}
+                                                onChange={(event) => updateFilter('max_price', event.target.value)}
+                                            />
+                                        </label>
+                                    </div>
+                                </fieldset>
+
+                                <button type="submit" className="shop-filter-submit">Aplică filtrele</button>
+                            </form>
+                        </aside>
+
+                        <section className="shop-results" aria-label="Lista de produse">
+                            <div className="shop-results-toolbar">
+                                <p>
+                                    {products.total > 0
+                                        ? `Afișăm ${products.from}–${products.to} din ${products.total} produse`
+                                        : 'Nu există produse pentru filtrele selectate'}
                                 </p>
+                                <label className="shop-sort">
+                                    <span>Sortează:</span>
+                                    <select
+                                        value={formFilters.sort}
+                                        onChange={(event) => {
+                                            const nextFilters = { ...formFilters, sort: event.target.value };
+                                            setFormFilters(nextFilters);
+                                            router.get('/', nextFilters, { preserveState: true, replace: true, preserveScroll: true });
+                                        }}
+                                    >
+                                        <option value="relevant">Relevante</option>
+                                        <option value="newest">Cele mai noi</option>
+                                        <option value="price_asc">Preț crescător</option>
+                                        <option value="price_desc">Preț descrescător</option>
+                                        <option value="name">Nume</option>
+                                    </select>
+                                </label>
                             </div>
-                            <div>
-                                <p className="text-sm font-semibold text-emerald-950">Gândit pentru tine</p>
-                                <p className="mt-2 text-sm leading-6 text-stone-600">
-                                    Pagini ușor de parcurs pe telefon, tabletă și calculator.
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold text-emerald-950">Cont personal</p>
-                                <p className="mt-2 text-sm leading-6 text-stone-600">
-                                    Creează un cont și gestionează-ți datele într-un singur loc.
-                                </p>
-                            </div>
-                        </div>
-                    </section>
+
+                            {products.data.length > 0 ? (
+                                <div className="shop-product-grid">
+                                    {products.data.map((product) => <ProductCard key={product.id} product={product} />)}
+                                </div>
+                            ) : (
+                                <div className="shop-empty-state">
+                                    <span aria-hidden="true">⌕</span>
+                                    <h2>Nu am găsit produse</h2>
+                                    <p>Încearcă alți termeni de căutare sau resetează filtrele.</p>
+                                    <button type="button" onClick={clearFilters}>Resetează filtrele</button>
+                                </div>
+                            )}
+
+                            {products.links.length > 3 && (
+                                <nav className="shop-pagination" aria-label="Paginare produse">
+                                    {products.links.map((link, index) => (
+                                        <Link
+                                            key={`${index}-${link.label}`}
+                                            href={link.url ?? '#produse'}
+                                            preserveScroll
+                                            aria-current={link.active ? 'page' : undefined}
+                                            className={`${link.active ? 'is-active' : ''}${!link.url ? ' is-disabled' : ''}`}
+                                        >
+                                            {link.label.replace('&laquo; Previous', '←').replace('Next &raquo;', '→')}
+                                        </Link>
+                                    ))}
+                                </nav>
+                            )}
+                        </section>
+                    </div>
                 </main>
 
                 <StorefrontFooter appName={appName} />

@@ -1,22 +1,19 @@
 <?php
 
 use App\Http\Controllers\AccountController;
-use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\StorefrontController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'appName' => config('app.name'),
-    ]);
-})->name('home');
+Route::get('/', [StorefrontController::class, 'index'])->name('home');
+Route::get('/produse/{product:slug}', [StorefrontController::class, 'show'])->name('products.show');
 
 Route::get('/hello-duval', function () {
     return 'hello Duval';
@@ -79,6 +76,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/products', [ProductController::class, 'store'])->name('products.store');
             Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
             Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+            Route::delete('/products/{product}/images/{image}', [ProductController::class, 'destroyImage'])
+                ->scopeBindings()
+                ->name('products.images.destroy');
         });
     });
 });

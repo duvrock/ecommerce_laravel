@@ -7,6 +7,12 @@
         <title inertia>{{ config('app.name', 'Magazin online') }}</title>
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx'])
+        @if (request()->is('admin*'))
+            @vite('resources/css/admin.css')
+        @endif
+        @if (request()->routeIs('home', 'products.show'))
+            @vite('resources/css/storefront.css')
+        @endif
         @inertiaHead
     </head>
     <body>

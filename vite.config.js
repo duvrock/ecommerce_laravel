@@ -9,6 +9,8 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/css/app.css',
+                'resources/css/admin.css',
+                'resources/css/storefront.css',
                 'resources/js/app.js',
                 'resources/js/app.tsx',
             ],

@@ -21,6 +21,7 @@
     },
     "dependencies": {
         "@inertiajs/react": "^2.3.29",
+        "bootstrap": "^5.3.8",
         "react": "^19.3.0",
         "react-dom": "^19.3.0"
     }

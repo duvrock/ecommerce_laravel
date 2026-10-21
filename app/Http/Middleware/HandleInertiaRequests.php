@@ -44,6 +44,10 @@ class HandleInertiaRequests extends Middleware
                     'email' => $request->user()->email,
                     'emailVerified' => $request->user()->hasVerifiedEmail(),
                     'roles' => $request->user()->roles->pluck('slug'),
+                    'permissions' => [
+                        'manageCategories' => $request->user()->can('manage-categories'),
+                        'manageProducts' => $request->user()->can('manage-products'),
+                    ],
                 ] : null,
             ],
             'flash' => [

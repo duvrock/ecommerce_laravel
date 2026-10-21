@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import AdminLayout from '../../Components/AdminLayout';
 
 type CategoryOption = {
     id: number;
@@ -17,12 +18,19 @@ type Product = {
     price: string;
     stock: number;
     image_path: string | null;
+    images: ProductImage[];
     is_active: boolean;
+};
+
+type ProductImage = {
+    id: number;
+    image_path: string;
 };
 
 type Pagination<T> = {
     data: T[];
     links: { url: string | null; label: string; active: boolean }[];
+    total: number;
 };
 
 type ProductForm = {
@@ -33,12 +41,15 @@ type ProductForm = {
     price: string;
     stock: number;
     image_path: string;
+    image: File | null;
+    images: File[];
     is_active: boolean;
 };
 
 type PageProps = {
     products: Pagination<Product>;
     categories: CategoryOption[];
+    filters: { search: string; status: string; category: number | null };
     flash: { status?: string };
 };
 
@@ -50,13 +61,100 @@ const emptyForm: ProductForm = {
     price: '',
     stock: 0,
     image_path: '',
+    image: null,
+    images: [],
     is_active: true,
 };
 
+function ProductGalleryCarousel({ product }: { product: Product }) {
+    const images = [
+        ...(product.image_path ? [{ id: `main-${product.id}`, image_path: product.image_path }] : []),
+        ...product.images,
+    ];
+    const [activeIndex, setActiveIndex] = useState(0);
+    const activeImage = images[activeIndex];
+
+    useEffect(() => {
+        setActiveIndex(0);
+    }, [images.length]);
+
+    if (!activeImage) {
+        return <span className="text-secondary">Fără imagini</span>;
+    }
+
+    return (
+        <div className="d-flex align-items-center gap-2" aria-label={`Galerie imagini ${product.name}`}>
+            <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                aria-label={`Imaginea anterioară pentru ${product.name}`}
+                disabled={images.length < 2}
+                onClick={() => setActiveIndex((index) => (index - 1 + images.length) % images.length)}
+            >
+                ‹
+            </button>
+            <div className="text-center">
+                <img
+                    src={imageUrl(activeImage.image_path)}
+                    alt={`${product.name} — imagine ${activeIndex + 1} din ${images.length}`}
+                    className="rounded object-fit-cover"
+                    width="56"
+                    height="56"
+                />
+                <div className="small text-secondary">{activeIndex + 1}/{images.length}</div>
+            </div>
+            <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                aria-label={`Imaginea următoare pentru ${product.name}`}
+                disabled={images.length < 2}
+                onClick={() => setActiveIndex((index) => (index + 1) % images.length)}
+            >
+                ›
+            </button>
+        </div>
+    );
+}
+
+function imageUrl(path: string): string {
+    return /^https?:\/\//i.test(path) || path.startsWith('/') ? path : `/storage/${path}`;
+}
+
 export default function AdminProducts({ products, categories }: PageProps) {
     const form = useForm<ProductForm>(emptyForm);
-    const { flash } = usePage<PageProps>().props;
+    const { flash, filters } = usePage<PageProps>().props;
     const [editingId, setEditingId] = useState<number | null>(null);
+    const [search, setSearch] = useState(filters.search);
+    const [status, setStatus] = useState(filters.status);
+    const [category, setCategory] = useState(filters.category?.toString() ?? '');
+    const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
+    const [selectedGalleryPreviews, setSelectedGalleryPreviews] = useState<string[]>([]);
+
+    useEffect(() => {
+        setSearch(filters.search);
+        setStatus(filters.status);
+        setCategory(filters.category?.toString() ?? '');
+    }, [filters.search, filters.status, filters.category]);
+
+    useEffect(() => {
+        if (!form.data.image) {
+            setSelectedImagePreview(null);
+
+            return;
+        }
+
+        const previewUrl = URL.createObjectURL(form.data.image);
+        setSelectedImagePreview(previewUrl);
+
+        return () => URL.revokeObjectURL(previewUrl);
+    }, [form.data.image]);
+
+    useEffect(() => {
+        const previewUrls = form.data.images.map((image) => URL.createObjectURL(image));
+        setSelectedGalleryPreviews(previewUrls);
+
+        return () => previewUrls.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
+    }, [form.data.images]);
 
     function edit(product: Product) {
         setEditingId(product.id);
@@ -68,6 +166,8 @@ export default function AdminProducts({ products, categories }: PageProps) {
             price: product.price,
             stock: product.stock,
             image_path: product.image_path ?? '',
+            image: null,
+            images: [],
             is_active: product.is_active,
         });
         form.clearErrors();
@@ -77,68 +177,114 @@ export default function AdminProducts({ products, categories }: PageProps) {
         setEditingId(null);
         form.reset();
         form.clearErrors();
+        form.transform((data) => data);
     }
 
     function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const options = {
             onSuccess: () => {
+                form.transform((data) => data);
                 setEditingId(null);
                 form.reset();
             },
         };
 
         if (editingId) {
-            form.put(`/admin/products/${editingId}`, options);
+            form.transform((data) => ({ ...data, _method: 'put' }));
+            form.post(`/admin/products/${editingId}`, { ...options, forceFormData: true });
         } else {
-            form.post('/admin/products', options);
+            form.post('/admin/products', { ...options, forceFormData: true });
         }
+    }
+
+    function filter(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        router.get('/admin/products', {
+            search,
+            status,
+            category,
+        }, { preserveState: true, replace: true });
     }
 
     return (
         <>
             <Head title="Produse" />
-            <main className="min-h-screen bg-gray-100 p-6 text-gray-900">
-                <section className="mx-auto max-w-6xl space-y-6">
-                    <header className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white p-6 shadow-sm">
-                        <div>
-                            <Link href="/admin" className="text-sm font-medium text-indigo-600">← Panou administrare</Link>
-                            <h1 className="mt-2 text-2xl font-semibold">Produse</h1>
+            <AdminLayout title="Produse">
+                    {flash.status && <div className="alert alert-success mb-0" role="status">{flash.status}</div>}
+
+                    <form onSubmit={filter} className="admin-panel row g-3 align-items-end p-3 p-lg-4">
+                        <label className="col-12 col-lg form-label mb-0">
+                            Caută produs
+                            <input
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
+                                className="form-control mt-1"
+                                placeholder="Nume, slug sau categorie"
+                            />
+                        </label>
+                        <label className="col-12 col-sm form-label mb-0">
+                            Categorie
+                            <select value={category} onChange={(event) => setCategory(event.target.value)} className="form-select mt-1">
+                                <option value="">Toate</option>
+                                {categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                            </select>
+                        </label>
+                        <label className="col-12 col-sm form-label mb-0">
+                            Stare
+                            <select value={status} onChange={(event) => setStatus(event.target.value)} className="form-select mt-1">
+                                <option value="all">Toate</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </label>
+                        <div className="col-12 col-lg-auto d-flex gap-2">
+                            <button className="btn btn-primary">Filtrează</button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSearch('');
+                                    setStatus('all');
+                                    setCategory('');
+                                    router.get('/admin/products', { search: '', status: 'all', category: '' }, { preserveState: true, replace: true });
+                                }}
+                                className="btn btn-outline-secondary"
+                            >
+                                Resetează
+                            </button>
                         </div>
-                        <Link href="/admin/categories" className="text-sm font-medium text-indigo-600">Administrare categorii</Link>
-                    </header>
+                    </form>
 
-                    {flash.status && <p className="rounded-lg bg-green-100 p-3 text-sm text-green-800">{flash.status}</p>}
-
-                    <form onSubmit={submit} className="space-y-4 rounded-xl bg-white p-6 shadow-sm">
-                        <h2 className="text-lg font-semibold">{editingId ? 'Editează produsul' : 'Adaugă un produs'}</h2>
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <label className="block text-sm font-medium">
+                    <form onSubmit={submit} className="admin-panel p-3 p-lg-4">
+                        <h2 className="h5 mb-3">{editingId ? 'Editează produsul' : 'Adaugă un produs'}</h2>
+                        <div className="row g-3 mb-3">
+                            <label className="col-12 col-md-6 form-label">
                                 Nume
                                 <input
                                     value={form.data.name}
                                     onChange={(event) => form.setData('name', event.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                                    className={`form-control${form.errors.name ? ' is-invalid' : ''}`}
                                     required
                                 />
-                                {form.errors.name && <span className="mt-1 block text-red-700">{form.errors.name}</span>}
+                                {form.errors.name && <span className="invalid-feedback d-block">{form.errors.name}</span>}
                             </label>
-                            <label className="block text-sm font-medium">
-                                Slug
+                            <label className="col-12 col-md-6 form-label">
+                                Slug <span className="text-secondary fw-normal">(opțional)</span>
                                 <input
                                     value={form.data.slug}
                                     onChange={(event) => form.setData('slug', event.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
-                                    required
+                                    className={`form-control${form.errors.slug ? ' is-invalid' : ''}`}
+                                    placeholder="Se generează automat din nume"
                                 />
-                                {form.errors.slug && <span className="mt-1 block text-red-700">{form.errors.slug}</span>}
+                                <span className="form-text">Lasă câmpul gol pentru generare automată din numele produsului.</span>
+                                {form.errors.slug && <span className="invalid-feedback d-block">{form.errors.slug}</span>}
                             </label>
-                            <label className="block text-sm font-medium">
+                            <label className="col-12 col-md-6 form-label">
                                 Categorie
                                 <select
                                     value={form.data.category_id}
                                     onChange={(event) => form.setData('category_id', Number(event.target.value))}
-                                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                                    className={`form-select${form.errors.category_id ? ' is-invalid' : ''}`}
                                     required
                                 >
                                     <option value={0} disabled>Alege categoria</option>
@@ -146,9 +292,9 @@ export default function AdminProducts({ products, categories }: PageProps) {
                                         <option key={category.id} value={category.id}>{category.name}</option>
                                     ))}
                                 </select>
-                                {form.errors.category_id && <span className="mt-1 block text-red-700">{form.errors.category_id}</span>}
+                                {form.errors.category_id && <span className="invalid-feedback d-block">{form.errors.category_id}</span>}
                             </label>
-                            <label className="block text-sm font-medium">
+                            <label className="col-12 col-md-6 form-label">
                                 Preț (RON)
                                 <input
                                     type="number"
@@ -156,12 +302,12 @@ export default function AdminProducts({ products, categories }: PageProps) {
                                     step="0.01"
                                     value={form.data.price}
                                     onChange={(event) => form.setData('price', event.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                                    className={`form-control${form.errors.price ? ' is-invalid' : ''}`}
                                     required
                                 />
-                                {form.errors.price && <span className="mt-1 block text-red-700">{form.errors.price}</span>}
+                                {form.errors.price && <span className="invalid-feedback d-block">{form.errors.price}</span>}
                             </label>
-                            <label className="block text-sm font-medium">
+                            <label className="col-12 col-md-6 form-label">
                                 Stoc
                                 <input
                                     type="number"
@@ -169,79 +315,162 @@ export default function AdminProducts({ products, categories }: PageProps) {
                                     step="1"
                                     value={form.data.stock}
                                     onChange={(event) => form.setData('stock', Number(event.target.value))}
-                                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                                    className={`form-control${form.errors.stock ? ' is-invalid' : ''}`}
                                     required
                                 />
-                                {form.errors.stock && <span className="mt-1 block text-red-700">{form.errors.stock}</span>}
+                                {form.errors.stock && <span className="invalid-feedback d-block">{form.errors.stock}</span>}
                             </label>
-                            <label className="block text-sm font-medium">
-                                Cale imagine (opțional)
+                            <label className="col-12 col-md-6 form-label">
+                                Imagine principală (JPG, PNG sau WebP; maximum 5 MB)
+                                <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    onChange={(event) => form.setData('image', event.target.files?.[0] ?? null)}
+                                    className={`form-control${form.errors.image ? ' is-invalid' : ''}`}
+                                />
+                                {form.errors.image && <span className="invalid-feedback d-block">{form.errors.image}</span>}
+                                {(selectedImagePreview || form.data.image_path) && (
+                                    <img
+                                        src={selectedImagePreview ?? imageUrl(form.data.image_path)}
+                                        alt={`Previzualizare ${form.data.name || 'produs'}`}
+                                        className="mt-2 rounded border object-fit-cover"
+                                        width="120"
+                                        height="120"
+                                    />
+                                )}
+                                {!selectedImagePreview && !form.data.image_path && (
+                                    <span className="form-text d-block">Imaginea principală apare prima în galeria produsului.</span>
+                                )}
+                            </label>
+                            <label className="col-12 form-label">
+                                Imagini pentru carusel (până la 10 imagini, maximum 5 MB fiecare)
+                                <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    multiple
+                                    onChange={(event) => form.setData('images', Array.from(event.target.files ?? []))}
+                                    className={`form-control${form.errors.images || form.errors['images.0'] ? ' is-invalid' : ''}`}
+                                />
+                                {form.errors.images && <span className="invalid-feedback d-block">{form.errors.images}</span>}
+                                {form.errors['images.0'] && <span className="invalid-feedback d-block">{form.errors['images.0']}</span>}
+                                {selectedGalleryPreviews.length > 0 && (
+                                    <div className="d-flex flex-wrap gap-2 mt-2">
+                                        {selectedGalleryPreviews.map((preview, index) => (
+                                            <img
+                                                key={preview}
+                                                src={preview}
+                                                alt={`Previzualizare imagine carusel ${index + 1}`}
+                                                className="rounded border object-fit-cover"
+                                                width="88"
+                                                height="88"
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                                {editingId && (products.data.find((product) => product.id === editingId)?.images.length ?? 0) > 0 && (
+                                    <div className="mt-3">
+                                        <span className="form-text d-block mb-2">Imagini deja salvate:</span>
+                                        <div className="d-flex flex-wrap gap-2">
+                                            {products.data.find((product) => product.id === editingId)?.images.map((image) => (
+                                                <div key={image.id} className="position-relative">
+                                                    <img
+                                                        src={imageUrl(image.image_path)}
+                                                        alt={`Imagine existentă pentru ${form.data.name}`}
+                                                        className="rounded border object-fit-cover"
+                                                        width="88"
+                                                        height="88"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-sm btn-danger position-absolute top-0 end-0 translate-middle"
+                                                        aria-label="Șterge imaginea din carusel"
+                                                        onClick={() => {
+                                                            if (window.confirm('Ștergi această imagine din carusel?')) {
+                                                                router.delete(`/admin/products/${editingId}/images/${image.id}`);
+                                                            }
+                                                        }}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                <span className="form-text d-block">Imaginile încărcate se adaugă la carusel; imaginea principală rămâne separată.</span>
+                            </label>
+                            <label className="col-12 col-md-6 form-label">
+                                URL sau cale imagine (opțional)
                                 <input
                                     value={form.data.image_path}
                                     onChange={(event) => form.setData('image_path', event.target.value)}
-                                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                                    className={`form-control${form.errors.image_path ? ' is-invalid' : ''}`}
                                 />
-                                {form.errors.image_path && <span className="mt-1 block text-red-700">{form.errors.image_path}</span>}
+                                {form.errors.image_path && <span className="invalid-feedback d-block">{form.errors.image_path}</span>}
                             </label>
                         </div>
-                        <label className="block text-sm font-medium">
+                        <label className="form-label d-block mb-3">
                             Descriere
                             <textarea
                                 value={form.data.description}
                                 onChange={(event) => form.setData('description', event.target.value)}
-                                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+                                className={`form-control${form.errors.description ? ' is-invalid' : ''}`}
                                 rows={3}
                             />
-                            {form.errors.description && <span className="mt-1 block text-red-700">{form.errors.description}</span>}
+                            {form.errors.description && <span className="invalid-feedback d-block">{form.errors.description}</span>}
                         </label>
-                        <label className="flex items-center gap-2 text-sm font-medium">
+                        <label className="form-check form-switch mb-3">
                             <input
                                 type="checkbox"
                                 checked={form.data.is_active}
                                 onChange={(event) => form.setData('is_active', event.target.checked)}
+                                className="form-check-input"
                             />
-                            Activ
+                            <span className="form-check-label">Activ</span>
                         </label>
-                        <div className="flex gap-3">
-                            <button disabled={form.processing || categories.length === 0} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                        <div className="d-flex flex-wrap align-items-center gap-2">
+                            <button disabled={form.processing || categories.length === 0} className="btn btn-primary">
                                 {editingId ? 'Salvează modificările' : 'Creează produsul'}
                             </button>
                             {editingId && (
-                                <button type="button" onClick={cancelEdit} className="rounded-lg border border-gray-300 px-4 py-2 text-sm">
+                                <button type="button" onClick={cancelEdit} className="btn btn-outline-secondary">
                                     Anulează
                                 </button>
                             )}
-                            {categories.length === 0 && <p className="self-center text-sm text-amber-700">Creează mai întâi o categorie.</p>}
+                            {categories.length === 0 && <p className="mb-0 text-warning-emphasis">Creează mai întâi o categorie.</p>}
                         </div>
                     </form>
 
-                    <section className="overflow-hidden rounded-xl bg-white shadow-sm">
+                    <section className="admin-panel overflow-hidden">
+                        <p className="px-3 pt-3 small text-secondary">{products.total} produse găsite</p>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 text-gray-600">
+                            <table className="table table-hover align-middle admin-table mb-0">
+                                <thead className="table-light">
                                     <tr>
-                                        <th className="px-4 py-3">Produs</th>
-                                        <th className="px-4 py-3">Categorie</th>
-                                        <th className="px-4 py-3">Preț</th>
-                                        <th className="px-4 py-3">Stoc</th>
-                                        <th className="px-4 py-3">Stare</th>
-                                        <th className="px-4 py-3">Acțiuni</th>
+                                        <th>Carusel imagini</th>
+                                        <th>Produs</th>
+                                        <th>Categorie</th>
+                                        <th>Preț</th>
+                                        <th>Stoc</th>
+                                        <th>Stare</th>
+                                        <th>Acțiuni</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody>
                                     {products.data.map((product) => (
                                         <tr key={product.id}>
-                                            <td className="px-4 py-3">
-                                                <div className="font-medium">{product.name}</div>
-                                                <div className="text-gray-500">{product.slug}</div>
+                                            <td><ProductGalleryCarousel product={product} /></td>
+                                            <td>
+                                                <div className="fw-semibold">{product.name}</div>
+                                                <div className="small text-secondary">{product.slug}</div>
                                             </td>
-                                            <td className="px-4 py-3">{product.category.name}</td>
-                                            <td className="px-4 py-3">{Number(product.price).toLocaleString('ro-RO', { style: 'currency', currency: 'RON' })}</td>
-                                            <td className="px-4 py-3">{product.stock}</td>
-                                            <td className="px-4 py-3">{product.is_active ? 'Activ' : 'Inactiv'}</td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex gap-3">
-                                                    <button type="button" onClick={() => edit(product)} className="font-medium text-indigo-600">Editează</button>
+                                            <td>{product.category.name}</td>
+                                            <td>{Number(product.price).toLocaleString('ro-RO', { style: 'currency', currency: 'RON' })}</td>
+                                            <td>{product.stock}</td>
+                                            <td><span className={`badge rounded-pill ${product.is_active ? 'text-bg-success' : 'text-bg-secondary'}`}>{product.is_active ? 'Activ' : 'Inactiv'}</span></td>
+                                            <td>
+                                                <div className="d-flex gap-2">
+                                                    <button type="button" onClick={() => edit(product)} className="btn btn-sm btn-outline-primary">Editează</button>
                                                     <button
                                                         type="button"
                                                         onClick={() => {
@@ -249,7 +478,7 @@ export default function AdminProducts({ products, categories }: PageProps) {
                                                                 router.delete(`/admin/products/${product.id}`);
                                                             }
                                                         }}
-                                                        className="font-medium text-red-600"
+                                                        className="btn btn-sm btn-outline-danger"
                                                     >
                                                         Șterge
                                                     </button>
@@ -258,26 +487,25 @@ export default function AdminProducts({ products, categories }: PageProps) {
                                         </tr>
                                     ))}
                                     {products.data.length === 0 && (
-                                        <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">Nu există produse.</td></tr>
+                                        <tr><td colSpan={7} className="admin-empty">Nu există produse.</td></tr>
                                     )}
                                 </tbody>
                             </table>
                         </div>
-                        <nav className="flex flex-wrap gap-2 border-t border-gray-100 p-4" aria-label="Paginare produse">
+                        <nav className="d-flex flex-wrap gap-2 border-top p-3" aria-label="Paginare produse">
                             {products.links.map((link, index) => (
                                 <Link
                                     key={`${index}-${link.label}`}
                                     href={link.url ?? '#'}
                                     preserveScroll
-                                    className={`rounded border px-3 py-1 text-sm ${link.active ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-300'} ${!link.url ? 'pointer-events-none opacity-50' : ''}`}
+                                    className={`btn btn-sm ${link.active ? 'btn-primary' : 'btn-outline-secondary'} ${!link.url ? 'disabled' : ''}`}
                                 >
                                     {link.label.replace('&laquo; Previous', '← Anterior').replace('Next &raquo;', 'Următoarea →')}
                                 </Link>
                             ))}
                         </nav>
                     </section>
-                </section>
-            </main>
+            </AdminLayout>
         </>
     );
 }

@@ -9,7 +9,8 @@ const pages = import.meta.glob<{ default: ComponentType }>(
 
 createInertiaApp({
     title: (title) => {
-        const appName = import.meta.env.VITE_APP_NAME ?? 'Magazin online';
+        const configuredName = import.meta.env.VITE_APP_NAME ?? 'Magazin online';
+        const appName = configuredName === 'Laravel' ? 'Magazin online' : configuredName;
 
         return title ? `${title} - ${appName}` : appName;
     },

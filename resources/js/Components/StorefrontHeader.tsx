@@ -1,93 +1,111 @@
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import type { FormEvent } from 'react';
 
 type StorefrontHeaderProps = {
     appName: string;
     user: {
         name: string;
     } | null;
+    search: string;
+    categories: { id: number; name: string; products_count: number }[];
+    selectedCategory: number | null;
 };
 
-export default function StorefrontHeader({ appName, user }: StorefrontHeaderProps) {
+export default function StorefrontHeader({
+    appName,
+    user,
+    search,
+    categories,
+    selectedCategory,
+}: StorefrontHeaderProps) {
+    const [searchTerm, setSearchTerm] = useState(search);
     const [menuOpen, setMenuOpen] = useState(false);
+    const brandName = appName === 'Laravel' ? 'Magazin online' : appName;
+
+    function submitSearch(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        router.get('/', { search: searchTerm }, { preserveState: true, replace: true });
+    }
 
     return (
-        <header className="relative z-10 border-b border-stone-200 bg-[#fffdf8]">
-            <div className="mx-auto flex min-h-20 max-w-7xl items-center justify-between gap-6 px-5 sm:px-8">
-                <Link
-                    href="/"
-                    className="flex shrink-0 items-center gap-3 text-stone-950"
-                    aria-label={`${appName} - pagina principală`}
-                >
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-950 text-lg font-semibold text-white">
-                        {appName.slice(0, 1).toUpperCase()}
+        <header className="shop-header">
+            <div className="shop-contactbar">
+                <p>Instrumente și soluții pentru proiectele tale. <a href="#produse">Descoperă catalogul</a></p>
+            </div>
+            <div className="shop-header-main shop-container">
+                <Link href="/" className="shop-brand" aria-label={`${brandName} - pagina principală`}>
+                    <span className="shop-brand-mark" aria-hidden="true">+</span>
+                    <span className="shop-brand-name">
+                        {brandName}
+                        <small>magazin online</small>
                     </span>
-                    <span className="text-lg font-semibold tracking-tight">{appName}</span>
                 </Link>
+
+                <form className="shop-search" role="search" onSubmit={submitSearch}>
+                    <label className="sr-only" htmlFor="store-search">Caută produse</label>
+                    <input
+                        id="store-search"
+                        type="search"
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        placeholder="Caută după produs, categorie..."
+                    />
+                    <button type="submit" aria-label="Caută">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 5 5" /></svg>
+                    </button>
+                </form>
+
+                <div className="shop-header-actions">
+                    {user ? (
+                        <Link href="/account" className="shop-header-action">
+                            <span className="shop-action-icon" aria-hidden="true">♙</span>
+                            <span><strong>{user.name}</strong><small>Contul meu</small></span>
+                        </Link>
+                    ) : (
+                        <Link href="/login" className="shop-header-action">
+                            <span className="shop-action-icon" aria-hidden="true">♙</span>
+                            <span><strong>Cont</strong><small>Autentificare</small></span>
+                        </Link>
+                    )}
+                    <Link href="/register" className="shop-quick-order">Creează cont</Link>
+                </div>
 
                 <button
                     type="button"
-                    className="inline-flex size-10 items-center justify-center rounded-lg border border-stone-300 text-stone-800 md:hidden"
+                    className="shop-menu-toggle"
                     aria-label={menuOpen ? 'Închide meniul' : 'Deschide meniul'}
                     aria-expanded={menuOpen}
-                    aria-controls="storefront-navigation"
-                    onClick={() => setMenuOpen(!menuOpen)}
+                    onClick={() => setMenuOpen((open) => !open)}
                 >
-                    <span className="text-xl leading-none">{menuOpen ? '×' : '☰'}</span>
+                    {menuOpen ? '×' : '☰'}
                 </button>
+            </div>
 
-                <nav
-                    id="storefront-navigation"
-                    aria-label="Navigare principală"
-                    className={`${menuOpen ? 'flex' : 'hidden'} absolute left-0 right-0 top-full flex-col gap-1 border-b border-stone-200 bg-[#fffdf8] p-4 shadow-lg md:static md:flex md:flex-row md:items-center md:gap-8 md:border-0 md:bg-transparent md:p-0 md:shadow-none`}
-                >
+            <nav className={`shop-nav${menuOpen ? ' is-open' : ''}`} aria-label="Categorii de produse">
+                <div className="shop-container shop-nav-inner">
                     <Link
-                        href="/"
-                        className="rounded-lg px-3 py-2 text-sm font-medium text-stone-700 hover:text-emerald-800"
+                        href="/#produse"
+                        className={!selectedCategory ? 'is-active' : ''}
                         onClick={() => setMenuOpen(false)}
                     >
-                        Acasă
+                        Toate produsele
                     </Link>
-                    <a
-                        href="#magazin"
-                        className="rounded-lg px-3 py-2 text-sm font-medium text-stone-700 hover:text-emerald-800"
-                        onClick={() => setMenuOpen(false)}
-                    >
-                        Magazin
-                    </a>
-                    <a
-                        href="#despre"
-                        className="rounded-lg px-3 py-2 text-sm font-medium text-stone-700 hover:text-emerald-800"
-                        onClick={() => setMenuOpen(false)}
-                    >
-                        Despre noi
-                    </a>
-                    <div className="mt-2 border-t border-stone-200 pt-3 md:mt-0 md:border-0 md:pt-0">
-                        {user ? (
-                            <Link
-                                href="/account"
-                                className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-stone-300 px-5 text-sm font-semibold text-stone-800 transition hover:border-emerald-900 hover:text-emerald-900 md:w-auto"
-                            >
-                                Contul meu
-                            </Link>
-                        ) : (
-                            <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                                <Link
-                                    href="/login"
-                                    className="inline-flex min-h-11 items-center justify-center rounded-full px-5 text-sm font-semibold text-stone-800 transition hover:bg-stone-100"
-                                >
-                                    Autentificare
-                                </Link>
-                                <Link
-                                    href="/register"
-                                    className="inline-flex min-h-11 items-center justify-center rounded-full bg-emerald-950 px-5 text-sm font-semibold text-white transition hover:bg-emerald-800"
-                                >
-                                    Cont client
-                                </Link>
-                            </div>
-                        )}
-                    </div>
-                </nav>
+                    {categories.slice(0, 7).map((category) => (
+                        <Link
+                            key={category.id}
+                            href={`/?category=${category.id}#produse`}
+                            className={selectedCategory === category.id ? 'is-active' : ''}
+                            onClick={() => setMenuOpen(false)}
+                        >
+                            {category.name}
+                        </Link>
+                    ))}
+                    <a className="shop-nav-highlight" href="#produse" onClick={() => setMenuOpen(false)}>Vezi catalogul</a>
+                </div>
+            </nav>
+            <div className="shop-promo-strip">
+                Catalogul este în continuă dezvoltare. <a href="#produse">Explorează produsele disponibile</a>
             </div>
         </header>
     );
