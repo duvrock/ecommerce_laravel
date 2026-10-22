@@ -87,9 +87,10 @@ function ProductCard({ product }: { product: Product }) {
                     <button
                         type="button"
                         className="shop-product-button shop-cart-button"
-                        aria-label={`Adaugă ${product.name} în coș (disponibil în curând)`}
-                        title="Coșul de cumpărături va fi disponibil în curând"
-                        disabled
+                        aria-label={`Adaugă ${product.name} în coș`}
+                        title={product.stock > 0 ? 'Adaugă în coș' : 'Stoc epuizat'}
+                        disabled={product.stock < 1}
+                        onClick={() => router.post(`/cos/produse/${product.id}`, { quantity: 1 }, { preserveScroll: true })}
                     >
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M3 4h2l2.2 10.1a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 1.9-1.4L21 8H6" />

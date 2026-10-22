@@ -47,12 +47,14 @@ class HandleInertiaRequests extends Middleware
                     'permissions' => [
                         'manageCategories' => $request->user()->can('manage-categories'),
                         'manageProducts' => $request->user()->can('manage-products'),
+                        'manageOrders' => $request->user()->can('manage-orders'),
                     ],
                 ] : null,
             ],
             'flash' => [
                 'status' => fn () => $request->session()->get('status'),
             ],
+            'cartCount' => fn () => array_sum($request->session()->get('cart', [])),
         ];
     }
 }

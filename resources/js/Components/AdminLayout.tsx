@@ -10,6 +10,7 @@ type AdminPageProps = {
             permissions: {
                 manageCategories: boolean;
                 manageProducts: boolean;
+                manageOrders: boolean;
             };
         } | null;
     };
@@ -30,6 +31,7 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
         { label: 'Panou general', symbol: 'PG', href: '/admin', visible: true },
         { label: 'Categorii', symbol: 'CA', href: '/admin/categories', visible: auth.user?.permissions.manageCategories ?? false },
         { label: 'Produse', symbol: 'PR', href: '/admin/products', visible: auth.user?.permissions.manageProducts ?? false },
+        { label: 'Comenzi', symbol: 'CO', href: '/admin/orders', visible: auth.user?.permissions.manageOrders ?? false },
     ].filter((item) => item.visible);
     const initials = auth.user?.name
         .split(/\s+/)

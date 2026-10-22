@@ -3,7 +3,10 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -14,6 +17,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [StorefrontController::class, 'index'])->name('home');
 Route::get('/produse/{product:slug}', [StorefrontController::class, 'show'])->name('products.show');
+Route::get('/cos', [CartController::class, 'index'])->name('cart.index');
+Route::post('/cos/produse/{product}', [CartController::class, 'store'])->name('cart.store');
+Route::patch('/cos/{productId}', [CartController::class, 'update'])->whereNumber('productId')->name('cart.update');
+Route::delete('/cos/{productId}', [CartController::class, 'destroy'])->whereNumber('productId')->name('cart.destroy');
+Route::get('/finalizare-comanda', [CheckoutController::class, 'create'])->name('checkout.create');
+Route::post('/finalizare-comanda', [CheckoutController::class, 'store'])->name('checkout.store');
+Route::get('/comanda/{order}', [CheckoutController::class, 'complete'])->name('checkout.complete');
 
 Route::get('/hello-duval', function () {
     return 'hello Duval';
@@ -79,6 +89,11 @@ Route::middleware('auth')->group(function () {
             Route::delete('/products/{product}/images/{image}', [ProductController::class, 'destroyImage'])
                 ->scopeBindings()
                 ->name('products.images.destroy');
+        });
+
+        Route::middleware('can:manage-orders')->group(function () {
+            Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+            Route::patch('/orders/{order}', [OrderController::class, 'update'])->name('orders.update');
         });
     });
 });

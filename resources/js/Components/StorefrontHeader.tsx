@@ -1,4 +1,4 @@
-import { Link, router } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 
@@ -19,6 +19,11 @@ export default function StorefrontHeader({
     categories,
     selectedCategory,
 }: StorefrontHeaderProps) {
+    const { cartCount, errors, flash } = usePage<{
+        cartCount: number;
+        errors: Record<string, string>;
+        flash: { status?: string };
+    }>().props;
     const [searchTerm, setSearchTerm] = useState(search);
     const [menuOpen, setMenuOpen] = useState(false);
     const brandName = appName === 'Laravel' ? 'Magazin online' : appName;
@@ -57,6 +62,15 @@ export default function StorefrontHeader({
                 </form>
 
                 <div className="shop-header-actions">
+                    <Link href="/cos" className="shop-cart-link" aria-label={`Coș de cumpărături, ${cartCount} produse`}>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 4h2l2.2 10.1a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 1.9-1.4L21 8H6" />
+                            <circle cx="10" cy="20" r="1" />
+                            <circle cx="18" cy="20" r="1" />
+                        </svg>
+                        <span>Coș</span>
+                        <b>{cartCount}</b>
+                    </Link>
                     {user ? (
                         <Link href="/account" className="shop-header-action">
                             <span className="shop-action-icon" aria-hidden="true">♙</span>
@@ -68,7 +82,7 @@ export default function StorefrontHeader({
                             <span><strong>Cont</strong><small>Autentificare</small></span>
                         </Link>
                     )}
-                    <Link href="/register" className="shop-quick-order">Creează cont</Link>
+                    {!user && <Link href="/register" className="shop-quick-order">Creează cont</Link>}
                 </div>
 
                 <button
@@ -104,9 +118,11 @@ export default function StorefrontHeader({
                     <a className="shop-nav-highlight" href="#produse" onClick={() => setMenuOpen(false)}>Vezi catalogul</a>
                 </div>
             </nav>
-            <div className="shop-promo-strip">
-                Catalogul este în continuă dezvoltare. <a href="#produse">Explorează produsele disponibile</a>
-            </div>
+            {(flash.status || errors.cart) && (
+                <div className={`shop-global-flash${errors.cart ? ' is-error' : ''}`} role={errors.cart ? 'alert' : 'status'}>
+                    {errors.cart ?? flash.status}
+                </div>
+            )}
         </header>
     );
 }

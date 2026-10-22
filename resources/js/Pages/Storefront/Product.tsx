@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import StorefrontFooter from '../../Components/StorefrontFooter';
 import StorefrontHeader from '../../Components/StorefrontHeader';
@@ -44,6 +44,7 @@ export default function ProductPage({ appName, auth, categories, product }: Prod
         ...product.images,
     ];
     const [activeImage, setActiveImage] = useState(0);
+    const [quantity, setQuantity] = useState(1);
     const selectedImage = images[activeImage];
 
     function moveImage(direction: number) {
@@ -133,6 +134,29 @@ export default function ProductPage({ appName, auth, categories, product }: Prod
                                 <span aria-hidden="true" />
                                 {product.stock > 0 ? 'Disponibil în stoc' : 'Stoc epuizat'}
                             </div>
+                            {product.stock > 0 && (
+                                <div className="shop-detail-purchase">
+                                    <label className="shop-quantity-control">
+                                        <span className="sr-only">Cantitate</span>
+                                        <button type="button" aria-label="Scade cantitatea" disabled={quantity <= 1} onClick={() => setQuantity((current) => Math.max(1, current - 1))}>−</button>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max={Math.min(product.stock, 99)}
+                                            value={quantity}
+                                            onChange={(event) => setQuantity(Math.max(1, Math.min(Number(event.target.value) || 1, Math.min(product.stock, 99))))}
+                                        />
+                                        <button type="button" aria-label="Crește cantitatea" disabled={quantity >= Math.min(product.stock, 99)} onClick={() => setQuantity((current) => Math.min(Math.min(product.stock, 99), current + 1))}>+</button>
+                                    </label>
+                                    <button
+                                        type="button"
+                                        className="shop-product-button"
+                                        onClick={() => router.post(`/cos/produse/${product.id}`, { quantity }, { preserveScroll: true })}
+                                    >
+                                        Adaugă în coș
+                                    </button>
+                                </div>
+                            )}
                             {product.description && <p className="shop-detail-description">{product.description}</p>}
                             <Link href="/" className="shop-product-button shop-detail-back">Înapoi la produse</Link>
                         </div>

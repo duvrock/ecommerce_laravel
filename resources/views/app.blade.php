@@ -10,7 +10,7 @@
         @if (request()->is('admin*'))
             @vite('resources/css/admin.css')
         @endif
-        @if (request()->routeIs('home', 'products.show'))
+        @if (request()->routeIs('home', 'products.show', 'cart.index', 'checkout.create', 'checkout.complete'))
             @vite('resources/css/storefront.css')
         @endif
         @inertiaHead
